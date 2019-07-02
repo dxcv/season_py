@@ -451,7 +451,8 @@ class MaxDrawDown(object):
 
     def compute_max_draw_down(self, df):
         df2 = df.sort_values(by=['日期']).reset_index(drop=True)
-        df.columns = ['复权单位净值']
+        df2.columns = ['复权单位净值']
+        df2.dropna(axis=0, how='any', inplace=True)
         price_list = df2['复权单位净值'].tolist()
         i = np.argmax((np.maximum.accumulate(price_list) - price_list) / np.maximum.accumulate(price_list))  # 结束位置
         if i == 0:

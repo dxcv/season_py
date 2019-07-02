@@ -25,9 +25,21 @@ def test_interval_profit():
     return
 
 def test_max_draw_down():
-    code, start, end = '163807', '20170101', '20171231'
+    # code, start, end = '163807', '20170101', '20171231'
+    # code, start, end = '519118', '20180401', '20190331'
+    code, start, end = '000911', '20180401', '20190331'
+    code, start, end = '003314', '20180401', '20190331'
     res = max_draw_down(code, start, end)
-    print('res: {}'.format(res))
+    print('1 year res: {}'.format(res))
+
+    code, start, end = '003314', '20170401', '20190331'
+    res = max_draw_down(code, start, end)
+    print('2 year res: {}'.format(res))
+
+    code, start, end = '003314', '20160401', '20190331'
+    res = max_draw_down(code, start, end)
+    print('3 year res: {}'.format(res))
+
     return
 
 def test_standard_deviation():
@@ -220,7 +232,8 @@ def main_test():
     # test_standard_deviation()
 
     # 测试最大回测
-    # test_max_draw_down()
+    print('begin test')
+    test_max_draw_down()
 
     # 测试绝对收益
     # test_interval_profit()
@@ -229,7 +242,7 @@ def main_test():
     # test_leverage_ration()
 
     # 测试超额收益alpha
-    test_compute_alpha_categroy()
+    # test_compute_alpha_categroy()
 
     # 测试下行波动率
     # test_down_std()

@@ -194,8 +194,8 @@ def test_down_std():
 # 测试夏普接口
 def test_sharp():
     code, start, end = '163807', '20170101', '20171231'
-    res, an = sharp_ratio(code, start, end)
-    print('res: {}, {}'.format(res, an))
+    res = sharp_ratio(code, start, end)
+    print('res: {}'.format(res))
     return
 
 def test_dt_input():
@@ -232,8 +232,8 @@ def main_test():
     # test_standard_deviation()
 
     # 测试最大回测
-    print('begin test')
-    test_max_draw_down()
+    # print('begin test')
+    # test_max_draw_down()
 
     # 测试绝对收益
     # test_interval_profit()
@@ -248,7 +248,7 @@ def main_test():
     # test_down_std()
 
     # 测试夏普率
-    # test_sharp()
+    test_sharp()
 
     # 测试信息比率
     # test_info_ratio()

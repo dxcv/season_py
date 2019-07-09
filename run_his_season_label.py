@@ -11,6 +11,7 @@ from sql import sql_oracle
 from season_label import leverage_ratio, standard_deviation
 from season_label import down_std, compute_alpha_categroy
 from season_label import max_draw_down, info_ratio
+from season_label import sharp_ratio
 
 log_dir = 'log'
 if os.path.exists(log_dir) and os.path.isdir(log_dir):
@@ -420,10 +421,52 @@ class RunSeasonLable(object):
         self.db_insert_session.finish()
         return
 
+    # 夏普率
+    def run_sharp(self):
+        fund_code = self.get_fund_code_by_filter(DOWN_STD_FILTER)
+        run_cnt = 0
+        fd_num = len(fund_code)
+        my_logger.info('funds number: {}'.format(fd_num))
+        for code in fund_code:
+            run_cnt += 1
+            my_logger.info('code: {} pct: {} / {}'.format(code, run_cnt, fd_num))
+            # 跑近三年
+            for date_list in self.run_date_list:
+                report_date = date_list[0]
+                for year_lag in range(1, 4):
+                    tmp_date = date_list[4-year_lag]
+                    start_date = pd.date_range(start=tmp_date, periods=2, freq='D').strftime('%Y%m%d').tolist()[-1]
+                    try:
+                        rst_value = sharp_ratio(code, start_date, report_date)
+                        my_logger.info('start_date: {} end_date: {}'.format(start_date, report_date))
+                        my_logger.info('code {} year_lag {} sharp{}'.format(code, year_lag, rst_value))
+                    except Exception as err:
+                        my_logger.warning(err)
+                        rst_value = None
+                    rec = (code, 'SharpeRatio{}Year'.format(year_lag), str(rst_value), None, self.algid, report_date, self.thisfilename, self.todaydate)
+                    if rst_value is not None:
+                        self.db_insert_session.add_info(rec)
+            # 跑半年
+            for date_list in self.half_year_date_list:
+                report_date = date_list[0]
+                tmp_date = date_list[1]
+                start_date = pd.date_range(start=tmp_date, periods=2, freq='D').strftime('%Y%m%d').tolist()[-1]
+                try:
+                    rst_value = sharp_ratio(code, start_date, report_date)
+                    my_logger.info('start_date: {} end_date: {}'.format(start_date, report_date))
+                    my_logger.info('code {} year_lag {} ir:{}'.format(code, 'half', rst_value))
+                except Exception as err:
+                    my_logger.warning(err)
+                    rst_value = None
+                rec = (code, 'SharpRatio6Month'.format(year_lag), str(rst_value), None, self.algid, report_date, self.thisfilename, self.todaydate)
+                self.db_insert_session.add_info(rec)
+        self.db_insert_session.finish()
+        return
+
 def main_run():
     run_oj = RunSeasonLable()
     # start_date, end_date = '20080101', '20181231'
-    start_date, end_date = '20080331', '20190331'
+    start_date, end_date = '20180101', '20190331'
     report_dates = gen_season_report_date(start_date, end_date)
     run_oj._set_end_list(report_dates)
 
@@ -437,7 +480,7 @@ def main_run():
     # run_oj.run_leverage_ratio()
 
     # 跑超额收益alpha run_type=2
-    run_oj.run_alpha()
+    # run_oj.run_alpha()
 
     # 跑超额收益alpha run_type=1
     # 优先跑基金
@@ -448,6 +491,9 @@ def main_run():
 
     # 跑信息比率
     # run_oj.run_ir()
+
+    # 跑夏普率
+    run_oj.run_sharp()
 
 if __name__ == '__main__':
     main_run()

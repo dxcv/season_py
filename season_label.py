@@ -609,17 +609,25 @@ class SharpRation(object):
 
     def get_periodic_interest_rate(self, time_list, excel_path=''):
         ''' 从wind客户端获取定存利率
+            不能计算就返回空值
         '''
+        if time_list:
+            index_start_date, end_date = time_list[0], time_list[-1]
+        else:
+            return
         if not excel_path:
-            rst = w.edb("M0043808", index_start_date, end_date,usedf=True)[1]
+            rst = w.edb("M0043808", index_start_date, end_date, usedf=True)[1]
             rst = rst.reset_index(drop=True)
             rst.index = pd.Series(rst['时间']).apply(lambda x: str(x)[:4] + str(x)[5:7] + str(x)[8:10])
             rst.columns = ['一年定存利率','时间']
         else:
             if not os.path.exists(excel_path):
                 raise Exception('Invalid pi excel_path')
-            # todo here
-        return 
+            rst = pd.read_excel(excel_path, dtype='object')
+            rst['日期'] = rst['时间'].apply(lambda x: str(x)[:4] + str(x)[5:7] + str(x)[8:10])
+        rst = rst[(rst.日期 >= index_start_date) & (rst.日期 <= end_date)]
+        interest = rst['一年定存利率'].mean() / (100 * 52)
+        return interest 
 
     def get_week_fund_value(self, code, time_list):
         '''获取净值接口，后续添加其他方式'''
@@ -631,12 +639,14 @@ class SharpRation(object):
         week_fund_value = self.get_week_fund_value(code, time_list=time_list)
         file_path = os.path.join('lingyao_input', 'sharp_ratio', '2014-2019_per_interest.xlsx')
         periodic_interest = self.get_periodic_interest_rate(time_list=time_list, excel_path=file_path)
-        return periodic_interest
+        earn_rate = week_fund_value.pct_change()
+        sharp_ration = self.compute_sharp_raitio(earn_rate, periodic_interest)
+        return sharp_ration
 
-    def compute_sharp_raitio(self):
-        dates.columns = ['基金收益率']
-        stv = dates['基金收益率'].std() * np.sqrt(52)
-        rst = ((dates['基金收益率'].mean() - interest) / stv) * 52
+    def compute_sharp_raitio(self, earn_rate, interest):
+        earn_rate.columns = ['基金收益率']
+        stv = earn_rate['基金收益率'].std() * np.sqrt(52)
+        rst = ((earn_rate['基金收益率'].mean() - interest) / stv) * 52
         return rst
 
 # 计算下行波动率

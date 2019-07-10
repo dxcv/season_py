@@ -68,6 +68,8 @@ class SeasonLabel(object):
         F13_1101 >= '%(start_date)s'
         and
         f13_1101 <= '%(end_date)s'
+        and
+        f4_1090='J'
         order by f13_1101
         ''' % {'end_date': end_date, 'code': code, 'start_date': start_date}
         fund_price = pd.DataFrame(self.cu_wind.execute(sql).fetchall(), columns=['日期', '复权单位净值'])
@@ -105,10 +107,12 @@ class SeasonLabel(object):
         sql_res = self.cu_wind.execute(sql_week_close_bibw).fetchall()
         assert sql_res, f'{code}基准查询结果为空,请改变基准'
         df = pd.DataFrame(sql_res, columns=['日期', '收盘价'])
-        if df.empty:
-            raise Exception('基金基准查询结果为空')
-        if df.shape[0] < len(time_list) * 0.9:
-            raise Exception('基准数据不足')
+        if df.empty or  df.shape[0] < len(time_list) :
+            #raise Exception('基金基准查询结果为空')
+            #    raise Exception('基准数据不足')
+            type = self.get_ejfl_type( code, start_date, end_date):
+            self.get_market(type,time_list)
+            df = self.get_market(ejfl_type, time_list)
         time_list_dt = pd.DataFrame(time_list, columns=['日期'])
         df = pd.merge(time_list_dt, df, on=['日期'], how='outer')
         df.fillna(method='ffill', inplace=True)
@@ -396,7 +400,7 @@ class StandardDeviation(object):
 
     def standard_deviation(self, code, start_date, end_date, fof=False):
         '''计算波动率, 判断是否为fof基金走两个分支'''
-        time_list = self.season_lable.gen_time_list(start_date, end_date, s_type='daily', pre_flag=False)
+        time_list = self.season_lable.gen_time_list(start_date, end_date, s_type='weekly', pre_flag=False)
         if not fof:
             # fund_price = self.get_fund_price(code, start_date, end_date)
             fund_price = self.get_fund_price(code, time_list=time_list)
@@ -406,6 +410,14 @@ class StandardDeviation(object):
         zhou_bodong = self.compute_standard_deviation(fund_price)
         return zhou_bodong
 
+    def standard_deviation_index(self, code, start_date, end_date):
+        '''计算波动率, 判断是否为fof基金走两个分支'''
+        time_list = self.season_lable.gen_time_list(start_date, end_date, s_type='daily', pre_flag=False)
+        
+        fund_price = self.get_fund_price_index(code, time_list=time_list)
+        
+        zhou_bodong = self.compute_standard_deviation(fund_price)
+        return zhou_bodong
     def compute_standard_deviation(self, df):
         ''' 计算波动率，dataframe.columnes=['日期', '复权单位净值’], 返回numpy.float64'''
         df2 = df.sort_values(by=['日期']).reset_index(drop=True)
@@ -481,14 +493,18 @@ class IntervalProfit(object):
         start_date = start_date if time_list[1] == start_date else time_list[0]
         end_date = time_list[-1]
         if not fof:
-            s_price_dt = self.get_fund_price(code, start_date, start_date, [])
-            e_price_dt = self.get_fund_price(code, end_date, end_date, [])
+            fund_price_dt = self.get_fund_price(code, time_list=time_list)
+            fund_price_dt.dropna(how='any', inplace=True)
+            s_price = fund_price_dt.iloc[0].values[0]
+            e_price = fund_price_dt.iloc[-1].values[0]
+            len_time = fund_price_dt.shape[0]
         else:
             s_price_dt = self.get_fund_price_fof(code, start_date, start_date, [])
             e_price_dt = self.get_fund_price_fof(code, end_date, end_date, [])
-        s_price = s_price_dt.iat[0, 0]
-        e_price = e_price_dt.iat[0, 0]
-        pft, annual_pft = self.compute_interva_profit(s_price, e_price, len(time_list))
+            s_price = s_price_dt.iat[0, 0]
+            e_price = e_price_dt.iat[0, 0]
+            len_time = len(time_list)
+        pft, annual_pft = self.compute_interva_profit(s_price, e_price, len_time)
         return pft, annual_pft
 
     def interval_profit_index(self, code, start_date, end_date):
@@ -759,6 +775,8 @@ leverage_ratio = tmp_local_season_label.leverage_ratio
 standard_deviation = tmp_local_season_label.standard_deviation
 # 波动率数据接口
 compute_standard_deviation = tmp_local_season_label.compute_standard_deviation
+#指数波动率
+standard_deviation_index = tmp_local_season_label.standard_deviation_index
 
 # 计算最大回撤
 max_draw_down = tmp_local_season_label.max_draw_down

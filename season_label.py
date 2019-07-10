@@ -105,14 +105,16 @@ class SeasonLabel(object):
         order by trade_dt 
         """
         sql_res = self.cu_wind.execute(sql_week_close_bibw).fetchall()
-        assert sql_res, f'{code}基准查询结果为空,请改变基准'
+        # assert sql_res, f'{code}基准查询结果为空,请改变基准'
         df = pd.DataFrame(sql_res, columns=['日期', '收盘价'])
         if df.empty or  df.shape[0] < len(time_list) :
             #raise Exception('基金基准查询结果为空')
             #    raise Exception('基准数据不足')
             type = self.get_ejfl_type( code, start_date, end_date)
             self.get_market(type,time_list)
-            df = self.get_market(ejfl_type, time_list)
+            df = self.get_market(type, time_list)
+            df.reset_index(inplace=True)
+            df['日期'] = df['日期'].astype(str)
         time_list_dt = pd.DataFrame(time_list, columns=['日期'])
         df = pd.merge(time_list_dt, df, on=['日期'], how='outer')
         df.fillna(method='ffill', inplace=True)
@@ -397,6 +399,7 @@ class StandardDeviation(object):
     def add_func(self):
         self.season_lable.standard_deviation = self.standard_deviation
         self.season_lable.compute_standard_deviation = self.compute_standard_deviation
+        self.season_lable.standard_deviation_index = self.standard_deviation_index
 
     def standard_deviation(self, code, start_date, end_date, fof=False):
         '''计算波动率, 判断是否为fof基金走两个分支'''
@@ -804,5 +807,6 @@ sharp_ratio = tmp_local_season_label.sharp_ratio
 info_ratio = tmp_local_season_label.info_ratio
 
 
+fund_price_biwi = tmp_local_season_label.get_fund_price_biwi
 if __name__ == '__main__':
     print('hello world')

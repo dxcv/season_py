@@ -110,7 +110,7 @@ class SeasonLabel(object):
         if df.empty or  df.shape[0] < len(time_list) :
             #raise Exception('基金基准查询结果为空')
             #    raise Exception('基准数据不足')
-            type = self.get_ejfl_type( code, start_date, end_date):
+            type = self.get_ejfl_type( code, start_date, end_date)
             self.get_market(type,time_list)
             df = self.get_market(ejfl_type, time_list)
         time_list_dt = pd.DataFrame(time_list, columns=['日期'])

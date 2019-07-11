@@ -18,6 +18,10 @@ def test_interval_profit():
     res, an = interval_profit(code, start, end)
     print('res: {}, {}'.format(res, an))
 
+    code, start, end = '040008', '20070802', '20080213'
+    res, an = interval_profit(code, start, end)
+    print('res: {}, {}'.format(res, an))
+
     # 测试 fof 接口
     code, start, end = '04C9489501FOFIF3', '20170101', '20180101'
     f_res, an = interval_profit(code, start, end, fof=True)
@@ -236,7 +240,7 @@ def main_test():
     # test_max_draw_down()
 
     # 测试绝对收益
-    # test_interval_profit()
+    test_interval_profit()
 
     # 测试杠杆率
     # test_leverage_ration()
@@ -248,7 +252,7 @@ def main_test():
     # test_down_std()
 
     # 测试夏普率
-    test_sharp()
+    # test_sharp()
 
     # 测试信息比率
     # test_info_ratio()

@@ -93,11 +93,13 @@ class SeasonLabel(object):
 
     def get_fund_price_biwi(self, code, start_date='', end_date='', time_list=[]):
         '''获取基金基准
+        返回 收益率
         '''
         if time_list:
             t1, t2 = time_list[0], time_list[-1]
         else:
             t1, t2 = start_date, end_date
+            time_list = self.gen_time_list(t1, t2)
         sql_code = code + 'BI.WI'
         sql_week_close_bibw = f"""
         select  trade_dt,s_dq_close from wind.chinamutualfundbenchmarkeod 
@@ -107,14 +109,21 @@ class SeasonLabel(object):
         sql_res = self.cu_wind.execute(sql_week_close_bibw).fetchall()
         # assert sql_res, f'{code}基准查询结果为空,请改变基准'
         df = pd.DataFrame(sql_res, columns=['日期', '收盘价'])
-        if df.empty or  df.shape[0] < len(time_list) :
-            #raise Exception('基金基准查询结果为空')
-            #    raise Exception('基准数据不足')
-            type = self.get_ejfl_type( code, start_date, end_date)
-            self.get_market(type,time_list)
-            df = self.get_market(type, time_list)
+
+        # 如果基准在 time_list 的最后7天没有净值，则换用同类基准
+        lastlist = time_list[-7:]
+        lastday = df['日期'].tail(1)
+        # 找不到基金基准则找同类基准
+        if df.empty or lastday.values[0] not in lastlist: 
+            ejfl_type, rptdate = self.get_ejfl_type(code, t1, t2)
+            # print(ejfl_type)
+            self.get_market(ejfl_type,time_list)
+            df = self.get_market(ejfl_type, time_list)
             df.reset_index(inplace=True)
             df['日期'] = df['日期'].astype(str)
+        else:
+            df['收益率'] = df['收盘价'].pct_change()
+            del df['收盘价']
         time_list_dt = pd.DataFrame(time_list, columns=['日期'])
         df = pd.merge(time_list_dt, df, on=['日期'], how='outer')
         df.fillna(method='ffill', inplace=True)
@@ -188,38 +197,40 @@ class SeasonLabel(object):
         market_all = pd.DataFrame()
         for i in ['中证800','中证国债','恒生指数','中证综合债','中证短债','中证可转债','MSCI']:
             market_all[str(i)+'收益率'] = market_tmp[str(i)].pct_change()
+        market_all['日期'] = market_tmp['日期']
         if fund_type =='股票型':
-            market_type  = market_all['中证800收益率']
+            market_all['市场组合收益率']  = market_all['中证800收益率']
         elif fund_type == '激进配置型':
-            market_type = market_all['中证800收益率']*0.8+market_all['中证国债收益率']*0.2
+            market_all['市场组合收益率'] = market_all['中证800收益率']*0.8+market_all['中证国债收益率']*0.2
         elif fund_type =='标准配置型':
-            market_type = market_all['中证800收益率']*0.6+market_all['中证国债收益率']*0.4
+            market_all['市场组合收益率'] = market_all['中证800收益率']*0.6+market_all['中证国债收益率']*0.4
         elif fund_type == '保守配置型':
-            market_type = market_all['中证800收益率'] * 0.2 + market_all['中证国债收益率'] * 0.8
+            market_all['市场组合收益率'] = market_all['中证800收益率'] * 0.2 + market_all['中证国债收益率'] * 0.8
         elif fund_type == '灵活配置型':
-            market_type = market_all['中证800收益率'] * 0.5 + market_all['中证国债收益率'] * 0.5
+            market_all['市场组合收益率'] = market_all['中证800收益率'] * 0.5 + market_all['中证国债收益率'] * 0.5
         elif fund_type == '沪港深股票型':
-            market_type = market_all['中证800收益率'] * 0.45 + market_all['中证国债收益率'] * 0.1+market_all['恒生指数收益率']*0.45
+            market_all['市场组合收益率'] = market_all['中证800收益率'] * 0.45 + market_all['中证国债收益率'] * 0.1+market_all['恒生指数收益率']*0.45
         elif fund_type == '沪港深配置型':
-            market_type = market_all['中证800收益率'] * 0.35 + market_all['中证国债收益率'] * 0.3 + market_all['恒生指数收益率'] * 0.35
+            market_all['市场组合收益率'] = market_all['中证800收益率'] * 0.35 + market_all['中证国债收益率'] * 0.3 + market_all['恒生指数收益率'] * 0.35
         elif fund_type =='纯债型':
-            market_type = market_all['中证综合债收益率']
+            market_all['市场组合收益率'] = market_all['中证综合债收益率']
         elif fund_type == '普通债券型':
-            market_type = market_all['中证综合债收益率']*0.9+market_all['中证800收益率'] * 0.1
+            market_all['市场组合收益率'] = market_all['中证综合债收益率']*0.9+market_all['中证800收益率'] * 0.1
         elif fund_type == '激进债券型':
-            market_type = market_all['中证综合债收益率']*0.8+market_all['中证800收益率'] * 0.2
+            market_all['市场组合收益率'] = market_all['中证综合债收益率']*0.8+market_all['中证800收益率'] * 0.2
         elif fund_type =='短债型':
-            market_type = market_all['中证短债收益率']
+            market_all['市场组合收益率'] = market_all['中证短债收益率']
         elif fund_type =='可转债型':
-            market_type = market_all['中证可转债收益率']
+            market_all['市场组合收益率'] = market_all['中证可转债收益率']
         elif fund_type =='环球股票':
-            market_type = market_all['MSCI收益率']
+            market_all['市场组合收益率'] = market_all['MSCI收益率']
         else:
-            market_type = np.array([])
-        # rst = pd.DataFrame(market_type, columns=['市场组合收益率'])
+            market_all['市场组合收益率'] = np.nan
+
+        market_all.to_excel('market_all.xlsx')
         rst = pd.DataFrame()
-        rst['市场组合收益率'] = market_type
-        rst['日期'] = time_list
+        rst['市场组合收益率'] = market_all['市场组合收益率']
+        rst['日期'] = market_all['日期']
         rst.set_index(['日期'], inplace=True)
         return rst
 
@@ -564,8 +575,8 @@ class AlphaCategroy(object):
                 fund_value = self.season_lable.get_fund_price(code, time_list=time_list)
             # 取不到 基金标准 换用同类标准
             try:
-                fund_index_value = self.season_lable.get_fund_price_biwi(code, time_list=time_list)
-                fund_index_rate = fund_index_value.pct_change()
+                fund_index_rate = self.season_lable.get_fund_price_biwi(code, time_list=time_list)
+                # fund_index_rate = fund_index_value.pct_change()
             except Exception as err:
                 print(err)
                 ejfl_type = self.season_lable.get_ejfl_type(code, start_date, end_date)
@@ -595,6 +606,7 @@ class AlphaCategroy(object):
         market = fund_rate.join(fund_index_rate)
         market.columns = ['基金收益率', '市场组合收益率']
         market = market.dropna(axis=0, how='any')
+        # print(market)
         rst = self.compute_alpha(market)
         return rst
 
@@ -743,8 +755,8 @@ class InfomationRatio(object):
         time_list = self.season_lable.gen_time_list(start_date, end_date, s_type='weekly', pre_flag=True)
         fund_value = self.season_lable.get_fund_price(code, time_list=time_list)
         try:
-            fund_index_value = self.season_lable.get_fund_price_biwi(code, time_list=time_list)
-            fund_index_rate = fund_index_value.pct_change()
+            fund_index_rate = self.season_lable.get_fund_price_biwi(code, time_list=time_list)
+            # fund_index_rate = fund_index_value.pct_change()
         except Exception as err:
             print(err)
             ejfl_type = self.season_lable.get_ejfl_type(code, start_date, end_date)

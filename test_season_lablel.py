@@ -102,28 +102,51 @@ def test_leverage_ration():
 
 # 测试超额收益
 def test_compute_alpha_categroy():
-    codes = '960042' 
-    codes = '370010'
-    codes = '110011'
-    codes = '002073'
-    start, end = '20151231', '20181231'
+    # 计算基金基准
+    code, start, end = '050004', '20040622', '20150710'
+    run_type = 2
+    rst = compute_alpha_categroy(code, start, end, run_type)
+    print(rst)
 
+    # 基金基准不足，改取同类基准进行计算
+    code, start, end = '050004', '20040622', '20190710'
+    run_type = 2
+    rst = compute_alpha_categroy(code, start, end, run_type)
+    print(rst)
+
+    codes, start, end = '519644', '20150101', '20161231'
+    run_type = 2
+    rst = compute_alpha_categroy(code, start, end, run_type)
+    print(rst)
+
+    '''
+    # 货币型 没有同类基准
+    code, start, end = '370010', '20151001', '20180930'
+    run_type = 0
+    rst = compute_alpha_categroy(code, start, end, run_type)
+    print(rst)
+    '''
+
+    # 测试 基准不够去同类基准流程
+    code, start, end = '184691', '19990504', '20140409'
+    run_type = 2
+    rst = compute_alpha_categroy(code, start, end, run_type)
+    print(rst)
+
+    '''
     # run_type: 0 同类基准, 1 同类平均, 2 基金基准
     # 基金基准 空值过多
     codes, start, end = '519644', '20150101', '20161231'
     codes, start, end = '370010', '20151001', '20180930'
-    '''
     run_type = 2
     rst = compute_alpha_categroy(codes, start, end, run_type)
     print(rst)
     run_type = 1
     rst = compute_alpha_categroy(codes, start, end, run_type)
     print(rst)
-    '''
     run_type = 0
     rst = compute_alpha_categroy(codes, start, end, run_type)
     print(rst)
-    '''
     # 同类基准
     run_type = 0
     rst = compute_alpha_categroy(codes, start, end, run_type)
@@ -134,8 +157,6 @@ def test_compute_alpha_categroy():
     rst = compute_alpha_categroy(codes, start, end, run_type)
     print(rst)
     return
-    '''
-    '''
     # 同类平均, 时间开销测试
     s_time = time.time()
     start, end = '20160331', '20190331'
@@ -240,13 +261,13 @@ def main_test():
     # test_max_draw_down()
 
     # 测试绝对收益
-    test_interval_profit()
+    # test_interval_profit()
 
     # 测试杠杆率
     # test_leverage_ration()
 
     # 测试超额收益alpha
-    # test_compute_alpha_categroy()
+    test_compute_alpha_categroy()
 
     # 测试下行波动率
     # test_down_std()
